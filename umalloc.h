@@ -13,7 +13,11 @@
  */
 typedef struct memory_block_struct {
     size_t block_size_alloc;
+
+    //free: *next points to next free node
+    //allocated: *next points to allocation value that determines whether it is allocated or not
     struct memory_block_struct *next;
+
 } memory_block_t;
 
 // Helper Functions, this may be editted if you change the signature in umalloc.c
