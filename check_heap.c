@@ -22,6 +22,7 @@ void printMemory(){
 // Check that all blocks in the free list are marked free.
 int check_free(){
     memory_block_t *cur = free_head;
+    //loops through the free list
     while (cur) {
         //If a block is marked allocated in the free list
         if (is_allocated(cur)) {
@@ -37,6 +38,7 @@ int check_free(){
 //Checks if all blocks are multiples of 16
 int check_mult(){
     memory_block_t *cur = free_head;
+    //loops through the free list
     while(cur) {
         //if size is not aligned
         if (get_size(cur) % ALIGNMENT != 0) {
@@ -52,6 +54,7 @@ int check_mult(){
 //checks if free list is in memory addresses' ascending order
 int check_ascending(){
     memory_block_t *cur = free_head;
+    //loops through the free list
     while(cur){
         if(cur != free_head){
             //checks if previous block's memories are greater than the current block
@@ -70,6 +73,7 @@ int check_ascending(){
 //checks for neighbors that could have been coalesced
 int check_neighbors(){
     memory_block_t *cur = free_head;
+    //loops through the free list
     while(cur && cur->next != NULL){
         //calculates the neighboring address through pointer arithmetic
         memory_block_t* addressCheck = (memory_block_t*) ((char*) cur + get_size(cur));
