@@ -12,8 +12,10 @@
  * and the remaining 60 bit represent the size.
  */
 typedef struct memory_block_struct {
+    //header size is now 24!**
     size_t block_size_alloc;
 
+    struct memory_block_struct *prev;
     //free: *next points to next free node
     //allocated: *next points to allocation value that determines whether it is allocated or not
     struct memory_block_struct *next;

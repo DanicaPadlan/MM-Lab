@@ -14,9 +14,8 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "Danica Padlan - dmp3357" ANSI_RE
 // A sample pointer to the start of the free list.
 //Only holds free nodes, user is in charge of keeping allocated pointers
 memory_block_t *free_head; 
-
-//check to make sure if okay**
 memory_block_t* last_free;
+int ALIGNMENT_PAD = ALIGNMENT * 2;
 
 
 /*
@@ -73,29 +72,39 @@ void put_block(memory_block_t *block, size_t size, bool alloc) {
     block->next = NULL;
 }
 
+//adjust payload address
 /*
  * get_payload - gets the payload of the block.
  */
 void *get_payload(memory_block_t *block) {
     assert(block != NULL);
     //returns address payload address (address of where to start putting storage)
-    return (void*)(block + 1);
+    char* p = (char*) block;
+    p = p + ALIGNMENT_PAD;
+    return (void*) p;
+    //return (void*)(block + 1);
 }
 
+//adjusted method
 /*
  * get_block - given a payload, returns the block.
  */
 memory_block_t *get_block(void *payload) {
     assert(payload != NULL);
     //returns address of header (holds size and next information)
-    return ((memory_block_t *)payload) - 1;
+    char* p = (char*) payload;
+    p = p - ALIGNMENT_PAD;
+    return (memory_block_t*) p;
+    //return ((memory_block_t *)payload) - 1;
 }
 
+//MY CODING AREA
 /*
  * The following are helper functions that can be implemented to assist in your
  * design, but they are not required. 
  */
 
+//get rid after implementing order
 //find_prev: helps find previous node of current node 
 //O(N) time
 memory_block_t *find_prev(memory_block_t* goal){
@@ -114,31 +123,124 @@ memory_block_t *find_prev(memory_block_t* goal){
     return NULL;
 }
 
+//debugging print
+void print_free(){
+    memory_block_t* cur = free_head;
+    printf("Printing free list\n");
+    while(cur){
+        printf("Starting Memory Address: %p, Ending Memory Address is: %p\n", cur, (void*) ((char*)cur + get_size(cur)));
+        cur = cur->next;
+    }
+    return;
+}
 
+
+//implement best fit algorithm
+/*
+ * insert - finds spot to insert block in accordance to memory address
+ */
+void insert(memory_block_t* curBlock){
+    //loop through free list to find good spot
+    //check by seeing if current memory and previous memory are less and greater than address
+    //special empty list case
+    printf("performing insert, the current free block: %p\n", free_head);
+
+    if(free_head == NULL){
+        printf("inserting %p in free_head\n", curBlock);
+        free_head = curBlock;
+        free_head->prev = NULL;
+        free_head->next = NULL;
+        return;
+    }
+
+    //special case/lone free head
+    if(curBlock < free_head){
+        printf("%p is less than free_head: %p\n", curBlock, free_head);
+
+        //set old freehead's prev to curblock
+        free_head->prev = curBlock;
+        //set curblock's next to free head
+        curBlock->next = free_head;
+        curBlock->prev = NULL;
+        //set new freehead to curblock
+        free_head = curBlock;
+
+        printf("%p 's next memory address is %p\n", free_head, free_head->next);
+
+        return;
+    }
+
+    memory_block_t* curMemory = free_head;
+    while(curMemory && curMemory->next != NULL){
+        printf("looping through free list\n");
+        //all other mid cases by checking cur memory and its next
+        if(curBlock > curMemory && curBlock < curMemory->next){
+            printf("%p is greater than curMemory: %p and less than curNext: %p\n", curBlock, curMemory, curMemory->next);
+            //insert in between the two blocks
+            //changes curMemory's next prev and curBlock's next
+            curMemory->next->prev = curBlock;
+            curBlock->next = curMemory->next;
+
+            //changes curMemory's next and curBlock's prev
+            curMemory->next = curBlock;
+            curBlock->prev = curMemory;
+            return;
+
+        }
+        curMemory = curMemory->next;
+
+    }
+    printf("%p is the last block, cannot find a perfect place to insert, Will add to the end\n", curBlock);
+    printf("the last free is %p\n", last_free);
+
+    //if it reaches this point, set to last header
+    //pass this point, at last free block and no next 
+    //potential problem: assume the block is bigger than curMemory
+    curMemory->next = curBlock;
+    curBlock->prev = curMemory;
+    curBlock->next = NULL;
+    
+    //sets curBlock to last block
+    last_free = curMemory;
+    return;
+}
+
+
+
+//implement best fit algorithm
 /*
  * find - finds a free block that can satisfy the umalloc request.
  */
 memory_block_t *find(size_t size) {
+
+    //debugging to see free list
+    print_free();
+
     //starts searching in beginning of memory header list
     memory_block_t* curMemory = free_head;
-
+    printf("looking for block to fit size: %li\n", size);
     //run loop while curMemory is not null, goes forward one way
-    while(curMemory != NULL){
+    while(curMemory){
         //if appropriate total size (header + needed storage memory), return pointer
-        //printf("checking current address at: %p\n", curMemory);
+        printf("checking current address at: %p\n", curMemory);
 
         //size includes header
-        //printf("checking current size: %li\n", get_size(curMemory));
+        printf("checking current size: %li\n", get_size(curMemory));
 
-        if( (get_size(curMemory)) >= size && get_size(curMemory) != 0){
+        //checking size if size is exact
+        if(get_size(curMemory) >= size){
             //debugging reasons
-            //printf("found the perfect address! size is %li\n", get_size(curMemory));
+            printf("found the perfect address! size is %li\n", get_size(curMemory));
             //printf("address is: %p \n", curMemory);
             //returns block/header pointer
             return curMemory;
         }
+        printf("still looking\n");
         curMemory = curMemory->next;
     }
+
+    //call coalesce and extend in here?
+
     printf("cant find\n");
     return NULL;
 }
@@ -160,6 +262,7 @@ memory_block_t *extend(size_t size) {
     
     //set last_free's next to new heap pool
     last_free->next = temp;
+    temp->prev = last_free;
 
     //sets last_free block to new heap 
     last_free = temp;
@@ -168,6 +271,7 @@ memory_block_t *extend(size_t size) {
     if(last_free == NULL){
         //finds intializing error
         //throw error!
+        //printf("last free is null\n");
     }
 
     //leave as null since dont want to return anything
@@ -179,15 +283,9 @@ memory_block_t *extend(size_t size) {
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
-    //PLAN
-    //subtract parameter desired size given in parameter
-    //"create" new memory block header, set up the leftover size to its size, set new memory block's next to current memory block's next
-    //set cur memory block's next to new memory and new size to parameter size
-    //allocate block in here and then return the address of payload
-    
-    //potential problem
     //gets new size for new split block, will be used to fill information in the new splitted header
     size_t newSize = get_size(block) - size;
+
     //debugging
     /*
     printf("block size: %li\n", get_size(block));
@@ -199,48 +297,108 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     //header address + size needed for allocating block (already includes header val)
     p = p + size;
 
-    //newSize does not stick, possibly because of pointer?
-    //gives in header address and new size
+    //gives in header address and new size to new block 
     put_block((void*) p, newSize, false);
-    //debugging
+
+    //this part is super confusing!!! lets not lmao 
+    //split isnt working grrr**
+    //when to change?
+    //everything changed at this point***
+    //need to set new split blocks prev and next pointers to block's next and prev 
+    //inserting it in same position as allocated block
+    //setting up next's
     /*
-    printf("new split block at get_block: %p\n", (void*) p);
-    printf("size of split block is: %li\n", get_size( (void*) p));
+    if(block->next != NULL){
+        block->next->prev = get_block((void*) p);
+    } 
+
+    //connect block's prev to new split
+    if(block->prev != NULL){
+        block->prev->next = get_block((void*) p);
+    }
+
+    //special check for set up with free_head
+    //changed order**
+    //put split block into cur blocks next
+    get_block((void *)p)->prev = block->prev;
+    get_block((void *)p)->next = block->next;
+
+    //change block next 
+    block->next = get_block((void*) p);
+    
     */
+    //debugging
+    
+    //printf("new split block at get_block: %p\n", (void*) p);
+    //printf("size of split block is: %li\n", get_size( (void*) p));
+    
 
-    //Note: try block pointers
-
-
-    //get the new address to end of free list
-    //change last free header's next to new block
-    last_free->next = (void*) p;
-    //new last free is the new block
-    last_free = last_free->next;
-
-    //update block's size
+    //update cur block's size
     block->block_size_alloc = size;
 
     //setting up new block
-    //sets up block as allocated in its space address*** potential bug
-    //changed allocate(block) to allocate(get(pay_load(block)))
-    allocate(get_payload(block));
+    //sets up block as allocated in its space address memory
+    //used to be get_payload()
+    allocate(block);
 
+    //being loopy weird
     //updating the free list
-
     //if block is the first one, 
     if(free_head == block){
+        printf("manipulating free_head: %p, current free_head next is %p\n", free_head, free_head->next);
+
+        if(free_head->next == NULL){
+            printf("BEFORE CHANGE: free_head's next is %p\n", free_head->next);
+        }
+
+        free_head = (void *) p;
+        free_head->next = block->next;
+        //why is this bein gnull grrrrrr
+        //THIS IS NULL WHYYYYYYY!!!**
+        //!!!!!!!!
+        //VVV this one the pointer is not working ahhhh
+
+        if(free_head->next == NULL){
+            printf("free head's next is empty!\n");
+        }
+
         //move first_head pointer to next
-        free_head = free_head->next;
+        //bc its the first one so there are no nexts**
+        //perhaps update it to the split block since im trying to put it in order
+
+        //if next is not null
+        /*
+        if(free_head->next != NULL){
+            //set the next's prev to point to the new split block
+            free_head->next->prev = get_block((void*) p);
+        }
+        //else its empty and split block will point to null
+        */
+
+        
+        //set previous to null
+        free_head->prev = NULL;
+
+        printf("new free head is: %p, it's next is %p\n", free_head, free_head->next);
+
     //else in the middle of the list    
     } else{
-        //calling O(N) method to find previous node
-        //skips and delinks block header
-        find_prev(block)->next = block->next;
+        
+        //checking special cases!! for if there is nothing after or before it
+        //gets previous block of next to change its next to newly split node
+        //delinks current allocated block
+        if(block->prev != NULL){
+            block->prev->next = (void*) p;
+        }
 
-        //what to do with next? either null out or double check for allocation boolean
-        //null out for now, dont think we need the double allocation check rn
-        block->next = NULL;
+        if(block->next != NULL){
+            block->next->prev = (void*) p;
+        }
     }
+    //what to do with next? either null out or double check for allocation boolean
+    //null out for now, dont think we need the double allocation check rn
+    block->next = NULL;
+    block->prev = NULL;
 
     //debugging
     /*
@@ -250,18 +408,44 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     //after changing the allocated block
     printf("after allocating og block, split block size is: %li\n", get_size( (void*) p));
     */
-
+    //printf("size of allocated bloc: %li", get_size(block) - ALIGNMENT_PAD);
     return block;
 }
 
-//figure out after split bc memory address
+//do returns matter? unsure
 /*
  * coalesce - coalesces a free memory block with neighbors.
  */
 memory_block_t *coalesce(memory_block_t *block) {
+    //go through entire free list, start on free_head, loop until cur->next is null
+    //check if curblock address + size = curblock->next's address
+    //everytime we find, put block at curblock address with size curblock + curblock->next
+    //if found, dont move on the block list yet and stay at cur block until next check
+    memory_block_t* cur = free_head;
+    while(cur && cur->next != NULL){
+
+        //potential problem how im checking
+        memory_block_t* addressCheck = (memory_block_t*) ((char*) cur + get_size(cur));
+        if(addressCheck == cur->next){
+            
+            //special cases check, if cur->next->next is NULL
+            if(cur->next->next == NULL){
+                cur->next = NULL;
+            } else{
+                
+                //set curnode's next to cur->next->next
+                cur->next = cur->next->next;
+                cur->next->prev = cur;
+            }
+
+            //put cur block with curBlock size + next curblock size
+            put_block(cur, (size_t) (get_size(cur) + get_size(cur->next)), false);
+        } else{
+            cur = cur->next;
+        }
+    }
     return NULL;
 }
-
 
 
 /*
@@ -276,15 +460,15 @@ int uinit() {
     free_head = csbrk( 16 * PAGESIZE);
     //initializing header
     put_block(free_head, 16 * PAGESIZE, false);
+    free_head->prev = NULL;
 
-    //keeps track of last_free header
+    //took out last_free header**
     last_free = free_head;
     //error check
     if(free_head == NULL){
         //finds intializing error
         return -1;
     }
-    
     return 0;
 }
 
@@ -292,12 +476,12 @@ int uinit() {
  * umalloc -  allocates size bytes and returns a pointer to the allocated memory.
  */
 void *umalloc(size_t size) {
+    printf("asked to give %li size block\n", size);
     //debugging free_head
     /*
     printf("current free_head address: %p \n", free_head);
     printf("free head's size: %li\n", get_size(free_head));
     */
-
 
     if(size <= 0){
         //return error for now null
@@ -305,8 +489,8 @@ void *umalloc(size_t size) {
     }
 
     //request for desired size, does not include header
-    //must add in header size
-    int appSize = ALIGN(size + ALIGNMENT);
+    //must add in header size (16/ALIGNMENT*2)
+    int appSize = ALIGN(size + ALIGNMENT_PAD);
 
     //debugging print statement, including header count
     //printf("byte space needed: %i\n", appSize);
@@ -314,7 +498,7 @@ void *umalloc(size_t size) {
     //problem can be in find
     //find returns the address with headers i think, not the payload?
     //first case, getting free memory block header
-    memory_block_t* availBlock = find(appSize);
+    memory_block_t* availBlock = find(appSize); //checking find something is failing to find an available block
 
     //check if availBlock is not null
     if(availBlock != NULL){
@@ -323,29 +507,39 @@ void *umalloc(size_t size) {
         //check for split case
         if(get_size(availBlock) > appSize){
             //call for split case, will return allocate memory here
+            //printf("gonna split\n");
+            //printf("app size: %i\n", appSize);
             split(availBlock, appSize);
         } else{
             //sets up block as allocated
             //changed allocate(availBlock) to allocate(get(pay_load(availBlock)))
-            allocate(get_payload(availBlock));
+            allocate(availBlock);
             //removes block from free list, go through n times to find prev node
             //segfault bc might be first
             //means its the first block
             if(free_head == availBlock){
                 //just update block
-                free_head = availBlock->next;
+                free_head = free_head->next;
+                free_head->prev = NULL;
 
-            } else{
-                //delinks block from list and
-                find_prev(availBlock)->next = availBlock->next;
+            } 
+            //sets its prev and next to point to each other
+            //assumptions are bad
+            if(availBlock->prev != NULL && availBlock->next != NULL){
+                availBlock->prev->next = availBlock->next;
+            }
+            if(availBlock->next != NULL && availBlock->prev!= NULL){
+                availBlock->next->prev = availBlock->prev;
             }
 
-            //unlinks avilBlock's next
-            //what to do with next? either null out or double check for allocation boolean
-            //null out for now, dont think we need the double allocation check rn
+            //unlinks avilBlock's next and prev
             availBlock->next = NULL;
+            availBlock->prev = NULL;
         }
-        
+
+        printf("i am sending back the block! The free list is:\n");
+        print_free();
+
         //returns payload address to user
         return get_payload(availBlock);   
     } 
@@ -365,8 +559,8 @@ void *umalloc(size_t size) {
 }
 
 /*
- * ufree -  frees the memory space pointed to by ptr, which must have been called
- * by a previous call to malloc.
+ * ufree -  frees the memory payload space pointed to by ptr, which must have been called
+ * by a previous call to malloc. 
  */
 void ufree(void *ptr) {
     //potential problem:
@@ -381,19 +575,14 @@ void ufree(void *ptr) {
         //throw error, returning null for now 
         return;
     }
+
     //get block address first
     memory_block_t* curHeader = get_block(ptr);
 
-    //should clear block just incase of leftover values** how to do?
-
-    //then deallocate it
     deallocate(curHeader);
-    
-    //take last_free and set it's next to this ptr
-    last_free->next = curHeader;
 
-    //sets last_free to newly freed block
-    last_free = curHeader;
+    //after deallocating, find perfect spot to insert the block in accordance to memory address
+    insert(curHeader);
 
     return;
 }
