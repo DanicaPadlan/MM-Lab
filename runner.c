@@ -48,12 +48,12 @@ static void copy_id(size_t *block, size_t block_size, size_t id) {
  * words can fit.
  */
 static int check_id(size_t *block, size_t block_size, size_t id) {
-    printf("block size: %li, size of size_t %li\n", block_size, sizeof(size_t));
+    //printf("block size: %li, size of size_t %li\n", block_size, sizeof(size_t));
     size_t words = block_size/ sizeof(size_t);
-    printf("size_t words: %li\n", words);
+    //printf("size_t words: %li\n", words);
 
     for(size_t i = 0; i < words; i++) {
-        printf("block[i]: %li, id: %li\n", block[i], id);
+        //printf("block[i]: %li, id: %li\n", block[i], id);
 
         if (block[i] != id) {
             return -1;
@@ -72,7 +72,7 @@ static int check_correctness(trace_t *trace, size_t curr_op) {
     for (size_t block_id = 0; block_id < trace->num_ids; block_id++) {
         allocated_block_t *block = &trace->blocks[block_id];
 
-        printf("checking block: %p\n", block);
+        //printf("checking block: %p\n", block);
         if (block->is_allocated) {
             if (check_id(block->payload, block->block_size, block->content_val) == -1) {
                 sprintf(msg, "umalloc corrupted block id %lu : Corrupted Memory Address: %p\n", block_id, block);
