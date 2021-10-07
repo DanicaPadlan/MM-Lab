@@ -80,6 +80,8 @@ int check_neighbors(){
         //checks if the next block in free list is it's neighbor 
         if(addressCheck == cur->next){
             printf("not all neighbors are combined\n");
+            printf("Cur Address: %p, Neighbor Address: %p\n", cur, cur->next);
+
             //if it is, return -1
             return -1;
         }
