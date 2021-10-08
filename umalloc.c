@@ -416,6 +416,41 @@ memory_block_t *find(size_t size) {
 
     //starts searching in beginning of memory header list
     memory_block_t* curMemory = free_head;
+    //printf("looking for block to fit size: %li\n", size);
+    //run loop while curMemory is not null, goes forward one way
+    while(curMemory){
+        //if appropriate total size (header + needed storage memory), return pointer
+        //printf("checking current address at: %p\n", curMemory);
+
+        //size includes header
+        //printf("checking current size: %li\n", get_size(curMemory));
+
+        //checking size if size is exact
+        if(get_size(curMemory) >= size){
+            //debugging
+            if(!is_allocated(curMemory)){
+            //debugging reasons
+            //printf("found the perfect address! size is %li\n", get_size(curMemory));
+            //printf("address is: %p \n", curMemory);
+            //returns block/header pointer
+            return curMemory;
+            } 
+        }
+        //printf("still looking\n");
+        curMemory = curMemory->next;
+    }
+
+    //past this point, no blocks can fit desired size
+    //call extend?
+    
+
+
+    printf("cant find no more blocks to fit\n");
+    return NULL;
+
+    /*
+    //starts searching in beginning of memory header list
+    memory_block_t* curMemory = free_head;
     memory_block_t* bestBlock = NULL;
     printf("looking for best block to fit size: %li\n", size);
     //run loop while curMemory is not null, goes forward one way
@@ -445,6 +480,7 @@ memory_block_t *find(size_t size) {
         //printf("still looking\n");
         curMemory = curMemory->next;
     }
+    */
     
     /*
     if(bestBlock == NULL){
@@ -461,9 +497,9 @@ memory_block_t *find(size_t size) {
 
     //extend keeps looping for a very long time
     //extend();
-    printf("returning block address: %p with size %li to fit %li\n", bestBlock, get_size(bestBlock),size);
+    //printf("returning block address: %p with size %li to fit %li\n", bestBlock, get_size(bestBlock),size);
     //returns null when cannot find a block that fits
-    return bestBlock;
+    //eturn bestBlock;
 }
 
 
