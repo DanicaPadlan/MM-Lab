@@ -6,7 +6,6 @@
 //Place any variables needed here from umalloc.c as an extern.
 extern memory_block_t *free_head;
 
-
 //printf debugging
 void printMemory(){
     memory_block_t* cur = free_head;

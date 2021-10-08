@@ -34,7 +34,7 @@ memory_block_t *get_block(void *payload);
 
 //changed return types and parameters
 memory_block_t *find(size_t size);
-void extend();
+memory_block_t *extend();
 memory_block_t *split(memory_block_t *block, size_t size);
 void coalesce(memory_block_t *block);
 

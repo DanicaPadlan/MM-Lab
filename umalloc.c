@@ -188,30 +188,36 @@ void insert(memory_block_t* curBlock){
     return;
 }
 
-//problem here
+//CHECK PROBLEMS HERE !!!
+//problem here: results into corrupted blocks?
 /*
  * extend - extends the heap if more memory is required.
  */
-void extend() {
-    printf("before extending free list\n");
-    print_free();
+memory_block_t* extend() {
+    //printf("before extending free list\n");
+    //print_free();
     //call csbrk like in uinit
     memory_block_t* temp = csbrk(16 * PAGESIZE);
 
-    if(temp == NULL){
-        printf("returned csbrk temp is null\n");
-        return;
-    }
-
+    
     //initializing header
     put_block(temp, 16 * PAGESIZE, false);
     
+    //cannot assume it is last in the list!
+    //insert(temp);
+
+    //never know if neighbors with previous nodes
+    //coalesce(temp);
+
+    return temp;
+    /*
     //set last_free's next to new heap pool
     last_free->next = temp;
     temp->prev = last_free;
 
     //sets last_free block to new heap 
     last_free = temp;
+    last_free->next = NULL;
 
     //error check
     if(last_free == NULL){
@@ -219,60 +225,29 @@ void extend() {
         //throw error!
         //printf("last free is null\n");
     }
-    printf("after extending free list\n");
-    print_free();
+
+    coalesce(last_free);
+
+    //printf("after extending free list\n");
+    //print_free();
     //void return, does the connecting to the new 
-    return;
+    return last_free;
+    */
 }
 
-//POTENTIAL PROBLEM IN BIGGER TEST CASES
-//implement best fit algorithm
-/*
- * find - finds a free block that can satisfy the umalloc request.
- */
-memory_block_t *find(size_t size) {
-
-    //debugging to see free list
-    print_free();
-
-    //starts searching in beginning of memory header list
-    memory_block_t* curMemory = free_head;
-    printf("looking for block to fit size: %li\n", size);
-    //run loop while curMemory is not null, goes forward one way
-    while(curMemory){
-        //if appropriate total size (header + needed storage memory), return pointer
-        printf("checking current address at: %p\n", curMemory);
-
-        //size includes header
-        printf("checking current size: %li\n", get_size(curMemory));
-
-        //checking size if size is exact
-        if(get_size(curMemory) >= size){
-            //debugging
-            if(!is_allocated(curMemory)){
-            //debugging reasons
-            printf("found the perfect address! size is %li\n", get_size(curMemory));
-            //printf("address is: %p \n", curMemory);
-            //returns block/header pointer
-            return curMemory;
-            } 
-        }
-        //printf("still looking\n");
-        curMemory = curMemory->next;
-    }
-    //if past this point, cannot find new block
-    printf("cant find\n");
-    return NULL;
-}
-
-//recheck
-//do after to consider special case**
+//pssoible problem for allocating corrupted blocks?
 /*
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
     //gets new size for new split block, will be used to fill information in the new splitted header
     size_t newSize = get_size(block) - size;
+
+    //debugging
+    if(is_allocated(block)){
+        printf("SPLIT received a corrupted block: %p\n", block);
+        return NULL;
+    }
 
     //debugging
     /*
@@ -287,7 +262,7 @@ memory_block_t *split(memory_block_t *block, size_t size) {
 
     //SEG FAULTTTT
     //gives in header address and new size to new block 
-    put_block((void*) p, newSize, false);
+    put_block((memory_block_t*) p, newSize, false);
     //debugging
     //printf("new split block at get_block: %p\n", (void*) p);
     //printf("size of split block is: %li\n", get_size( (void*) p));
@@ -300,7 +275,7 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     allocate(block);
 
     if(free_head == block){
-        free_head = (void*) p;
+        free_head = (memory_block_t*) p;
         free_head->next = block->next;
         free_head->prev = NULL;
         //never know if free head is connected dont assume
@@ -314,13 +289,12 @@ memory_block_t *split(memory_block_t *block, size_t size) {
         }
     //if free_head is not the last header
     } else if(last_free == block){
-        last_free = (void*) p;
+        last_free = (memory_block_t*) p;
         last_free->prev = block->prev;
         last_free->next = NULL;
         if(block->prev != NULL){
             block->prev->next = last_free;
         }
-        
 
     //middle list cases, should have prev and next    
     } else{
@@ -369,9 +343,9 @@ void coalesce(memory_block_t *block) {
     }
 
     //debugging statements
-    printf("attempting to coalesce cur block: %p\n", block);
-    printf("~~~Before coalesing~~~\n");
-    print_free();
+    //printf("attempting to coalesce cur block: %p\n", block);
+    //printf("~~~Before coalesing~~~\n");
+    //print_free();
 
     //checking if previous node can merge with cur node
     if(block->prev != NULL){
@@ -388,7 +362,7 @@ void coalesce(memory_block_t *block) {
             if(last_free == block){
                 last_free = block->prev;
             //else next is not null    
-            } else{
+            } else if(block->next != NULL){
                 block->next->prev = block->prev;
             }
             //printf("block prev: %p's next is %p. Merge size is: %li\n",block->prev, block->prev->next, mergeSize);
@@ -406,29 +380,92 @@ void coalesce(memory_block_t *block) {
         p = p + get_size(block);
 
         if(((memory_block_t*) p) == block->next){
-            printf("cur block %p and next block %p are neighbors!\n", block, block->next);
+            //printf("cur block %p and next block %p are neighbors!\n", block, block->next);
             
             size_t mergeSize = get_size(block) + get_size(block->next);
-            printf("Merge size is: %li\n", mergeSize);
+            //printf("Merge size is: %li\n", mergeSize);
             block->next = block->next->next;
             if(last_free == block->next){
                 last_free = block;
-
+            //taking out check
             } else if(block->next != NULL){
                 block->next->prev = block;
             } 
             block->block_size_alloc = mergeSize;
-            printf("block : %p's next is %p. Merge size is: %li\n",block, block->next, mergeSize);
+            //printf("block : %p's next is %p. Merge size is: %li\n",block, block->next, mergeSize);
         }
         
         
     }
-    printf("***After coalescing***\n");
-    print_free();
+    //printf("***After coalescing***\n");
+    //print_free();
 
     //void return
     return;
 }
+
+//best fit is not always getting the best fit anyways
+//implement best fit algorithm****
+/*
+ * find - finds a free block that can satisfy the umalloc request.
+ */
+memory_block_t *find(size_t size) {
+
+    //debugging to see free list
+    print_free();
+
+    //starts searching in beginning of memory header list
+    memory_block_t* curMemory = free_head;
+    memory_block_t* bestBlock = NULL;
+    printf("looking for best block to fit size: %li\n", size);
+    //run loop while curMemory is not null, goes forward one way
+    while(curMemory){
+        //if appropriate total size (header + needed storage memory), return pointer
+        printf("checking current address at: %p with size %li\n", curMemory, get_size(curMemory));
+
+        //size includes header
+        //printf("checking current size: %li\n", get_size(curMemory));
+
+        //checking size if size is exact
+        if(get_size(curMemory) >= size){
+            //potential candidate to fit block
+            
+            //special case if bestBlock null, first fit block
+            if(bestBlock == NULL){
+                bestBlock = curMemory;
+
+            //never comes in here?
+            //if candidate, want to compare size differences of desired block and potential block  
+            } else if((get_size(curMemory) - size) < (get_size(bestBlock) - size)){
+                printf("~~found new best memory\n");
+                bestBlock = curMemory;
+            }
+            //else don't do anything
+        }
+        //printf("still looking\n");
+        curMemory = curMemory->next;
+    }
+    
+    /*
+    if(bestBlock == NULL){
+        printf("can't find block for size %li, need to extend\n", size);
+        //must call extend
+        //however why does it loop so much when i call extend
+        //after this, there is corrupted memory
+        //why does block loop?
+        bestBlock = extend();
+    }
+    */
+
+    //printf("cant find block for size %li must get more memory\n", size);
+
+    //extend keeps looping for a very long time
+    //extend();
+    printf("returning block address: %p with size %li to fit %li\n", bestBlock, get_size(bestBlock),size);
+    //returns null when cannot find a block that fits
+    return bestBlock;
+}
+
 
 /*
  * uinit - Used initialize metadata required to manage the heap
@@ -471,6 +508,9 @@ void *umalloc(size_t size) {
         //return error for now null
         return NULL;
     }
+
+    //does not loop, NOT GOOD but works VERY BAD DON"T DO IT
+    //extend();
 
     //request for desired size, does not include header
     //must add in header size (16/ALIGNMENT*2)
@@ -543,7 +583,6 @@ void *umalloc(size_t size) {
         //returns payload address to user
         return get_payload(availBlock);   
     } 
-
     return NULL;
 }
 
