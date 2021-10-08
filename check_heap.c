@@ -18,6 +18,31 @@ void printMemory(){
 
 }
 
+/*
+int check_middle(){
+    memory_block_t *cur = free_head;
+    while(cur){
+        //checking first node
+        if(free_head == cur && free_head->prev != NULL){
+            printf("free head has a previous block\n");
+            return -1;
+        //checking last node    
+        } else if(last_free == cur && free_head->next != NULL){
+            printf("last head has a next block\n");
+            return -1;
+        //checking middle node    
+        } else if((cur != free_head && cur != last_free) && cur->next == NULL || cur->prev == NULL){
+            printf("not all middle nodes have a next or prev\n");
+            return -1;
+        }
+
+    }
+    return 0;
+}
+*/
+
+
+
 // Check that all blocks in the free list are marked free.
 int check_free(){
     memory_block_t *cur = free_head;
