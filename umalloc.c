@@ -255,7 +255,7 @@ memory_block_t *find(size_t size) {
 
         //checking size if size is exact
         if(get_size(curMemory) >= size){
-            printf("returning %p with size: %li\n", curMemory, get_size(curMemory));
+            printf("returning %p with size: %li \n", curMemory, get_size(curMemory));
             return curMemory;
         }
         //printf("still looking\n");
