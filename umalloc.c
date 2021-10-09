@@ -15,7 +15,8 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "Danica Padlan - dmp3357" ANSI_RE
 //Only holds free nodes, user is in charge of keeping allocated pointers
 memory_block_t *free_head; 
 memory_block_t* last_free;
-int ALIGNMENT_PAD = ALIGNMENT * 2;
+
+//have a variable for max header address that gets updated a lot and checked to make sure a space is not out of range
 
 
 /*
@@ -70,6 +71,7 @@ void put_block(memory_block_t *block, size_t size, bool alloc) {
     assert(alloc >> 1 == 0);
     block->block_size_alloc = size | alloc;
     block->next = NULL; //segfault happening
+    block->prev = NULL;
 }
 
 //adjust payload address
@@ -80,7 +82,7 @@ void *get_payload(memory_block_t *block) {
     assert(block != NULL);
     //returns address payload address (address of where to start putting storage)
     char* p = (char*) block;
-    p = p + ALIGNMENT_PAD;
+    p = p + ALIGNMENT;
     return (void*) p;
     //return (void*)(block + 1);
 }
@@ -93,7 +95,7 @@ memory_block_t *get_block(void *payload) {
     assert(payload != NULL);
     //returns address of header (holds size and next information)
     char* p = (char*) payload;
-    p = p - ALIGNMENT_PAD;
+    p = p - ALIGNMENT;
     return (memory_block_t*) p;
     //return ((memory_block_t *)payload) - 1;
 }
@@ -201,6 +203,7 @@ void insert(memory_block_t* curBlock){
     return;
 }
 
+//deals with memory
 //FOCUS
 //have not called it yet
 //dont want to return anything atm 
@@ -212,25 +215,31 @@ memory_block_t *extend() {
     memory_block_t* temp = csbrk(16 * PAGESIZE);
     //initializing header
     put_block(temp, 16 * PAGESIZE, false);
+    //printf("memory range of temp: %p to %p\n", free_head, ((char*)  temp + get_size(temp)));
+
     //printf("new heap pool extension: %p\n", temp);
     //printf("before insert *first header is %p and last free is %p\n", free_head, last_free);
-    //insert memory in right spot
+    //insert memory in correct spot according to 
     insert(temp);
     //printf("after extend's call on insert\n");
     //print_free();
     //printf("after insert *first header is %p and last free is %p\n\n", free_head, last_free);
 
+    printf("added heap pool is from %p to %p\n", temp, (char*)temp + get_size(temp));
+
     return temp;
 }
 
-//implement best fit algorithm
+//assuming it would not make sense for the block to be out of range
+//deals with memory
+//changed from first to best fit algorithm
 /*
  * find - finds a free block that can satisfy the umalloc request.
  */
 memory_block_t *find(size_t size) {
 
     //debugging to see free list
-    //printf("In find(), here's the list\n");
+    //printf("In find ");
     //print_free();
 
     //starts searching in beginning of memory header list
@@ -239,37 +248,28 @@ memory_block_t *find(size_t size) {
     //run loop while curMemory is not null, goes forward one way
     while(curMemory){
         //if appropriate total size (header + needed storage memory), return pointer
-        //printf("checking current address at: %p\n", curMemory);
+        //printf("checking current address at: %p with size %li\n", curMemory, get_size(curMemory));
 
         //size includes header
         //printf("checking current size: %li\n", get_size(curMemory));
 
         //checking size if size is exact
         if(get_size(curMemory) >= size){
-            //debugging
-            if(!is_allocated(curMemory)){
-            //debugging reasons
-            //printf("found the perfect address! size is %li\n", get_size(curMemory));
-            //printf("address is: %p \n", curMemory);
-            //returns block/header pointer
+            printf("returning %p with size: %li\n", curMemory, get_size(curMemory));
             return curMemory;
-            } else{
-                //printf("memory: %p is allocated\n", curMemory);
-            }
-
-
-            
         }
         //printf("still looking\n");
         curMemory = curMemory->next;
     }
 
-    //call extend in here?
-
-    //printf("cant find must extend by calling extend\n");
+    //past this point, no blocks can fit desired size
+    //call extend?
+    
+    printf("calling extend\n");
     return extend();
 }
 
+//segfault??
 //recheck, middle manipulation should be 
 //do after to consider special case**
 /*
@@ -278,25 +278,21 @@ memory_block_t *find(size_t size) {
 memory_block_t *split(memory_block_t *block, size_t size) {
     //gets new size for new split block, will be used to fill information in the new splitted header
     size_t newSize = get_size(block) - size;
-    //printf("before splitting\n");
-    //print_free();
+    
+    printf("given block range to split: %p to %p\n", block, (char*) block + get_size(block));
 
-
-    //debugging
-    /*
-    printf("block size: %li\n", get_size(block));
-    printf("leftover size: %li\n", newSize);
-    */
-
+    //Note: pointer arithmetic is getting out of bounds?
     //gets header of the block
     char* p = (char*) block;
     //header address + size needed for allocating block (already includes header val)
     p = p + size;
 
+    //Note: pointer is being out of bounds?
     //gives in header address and new size to new block 
-    put_block((void*) p, newSize, false); //segfault
+    put_block((memory_block_t*) p, newSize, false); //segfault
+
     //debugging
-    //printf("new split block at get_block: %p\n", (void*) p);
+    printf("new split block at get_block: %p with size %li\n", (void*) p, get_size( (void*) p));
     //printf("size of split block is: %li\n", get_size( (void*) p));
 
     //update cur block's size
@@ -349,6 +345,10 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     block->next = NULL;
     block->prev = NULL;
 
+    
+    //printf("After splitting\n");
+    //print_free();
+    //printf("\n");
     //debugging
     /*
     printf("address of free_head: %p\n", free_head);
@@ -436,6 +436,7 @@ void coalesce(memory_block_t *block) {
 }
 
 
+//deals with memory
 /*
  * uinit - Used initialize metadata required to manage the heap
  * along with allocating initial memory.
@@ -449,14 +450,10 @@ int uinit() {
     //initializing header
     put_block(free_head, 16 * PAGESIZE, false);
     free_head->prev = NULL;
-
-    //took out last_free header**
     last_free = free_head;
-    //error check
-    if(free_head == NULL){
-        //finds intializing error
-        return -1;
-    }
+
+    printf("heap address from %p to %p\n", free_head, (char*) free_head + get_size(free_head));
+
     return 0;
 }
 
@@ -476,21 +473,20 @@ void *umalloc(size_t size) {
         return NULL;
     }
 
-    //request for desired size, does not include header
-    //must add in header size (16/ALIGNMENT*2)
-    int appSize = ALIGN(size + ALIGNMENT_PAD);
+    //did not add header in this parameter bc automatically adds 32
+    //request for desired size, must add in header size (32 or ALIGNMENT)
+    int appSize = ALIGN(size + ALIGNMENT);
 
     //debugging print statement, including header count
     //printf("byte space needed: %i\n", appSize);
 
     //problem can be in find
-    //find returns the address with headers i think, not the payload?
-    //first case, getting free memory block header
+    //find returns the address with headers 
     memory_block_t* availBlock = find(appSize); //checking find something is failing to find an available block
 
+    //should i keep this check here if it extends in find anyways?
     //check if availBlock is not null
     if(availBlock != NULL){
-        //work more on extend and split case check orderings!
 
         //check for split case
         if(get_size(availBlock) > appSize){
@@ -514,7 +510,6 @@ void *umalloc(size_t size) {
                 //changes free to free->next
                 free_head = free_head->next;
                 free_head->prev = NULL;
-
             } 
 
             if(last_free == availBlock){
@@ -536,14 +531,13 @@ void *umalloc(size_t size) {
             if(availBlock->next != NULL){
                 availBlock->next->prev = availBlock->prev;
             }
-
-            //unlinks avilBlock's next and prev
-            availBlock->next = NULL;
-            availBlock->prev = NULL;
+            
         }
+        //unlinks avilBlock's next and prev, moved outside non-split special case
+        availBlock->next = NULL;
+        availBlock->prev = NULL;
 
         //printf("i am sending back block to user from %p to %p\n\n", availBlock, (void*) ((char*) availBlock + get_size(availBlock)));
-
         //returns payload address to user
         return get_payload(availBlock);   
     } 

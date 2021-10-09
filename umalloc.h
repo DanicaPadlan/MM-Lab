@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define ALIGNMENT 16 /* The alignment of all payloads returned by umalloc */
+#define ALIGNMENT 32 /* The alignment of all payloads returned by umalloc */
 #define ALIGN(size) (((size) + (ALIGNMENT-1)) & ~(ALIGNMENT-1))
 
 /*
