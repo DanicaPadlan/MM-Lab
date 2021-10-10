@@ -132,6 +132,7 @@ static int run_trace_line(trace_t *trace, size_t curr_op, int utilization, int r
 
         if (((size_t)trace->blocks[op.index].payload) % ALIGNMENT != 0) {
             malloc_error(curr_op, "umalloc returned an unaligned payload.");
+            printf("The payload is: %li\n", ((size_t)trace->blocks[op.index].payload));
             return -1;
         }
 
