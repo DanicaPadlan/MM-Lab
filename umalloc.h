@@ -12,9 +12,14 @@
  * and the remaining 60 bit represent the size.
  */
 typedef struct memory_block_struct {
-    //header size is now 32 padding
+    //header size is 32 bytes
     size_t block_size_alloc;
+
+    //extra field is used for padding to make 
+    //struct size 16 byte aligned
     size_t padding;
+
+    //pointers for prev and next blocks
     struct memory_block_struct *prev;
     struct memory_block_struct *next;
     
@@ -26,7 +31,6 @@ bool is_allocated(memory_block_t *block);
 void allocate(memory_block_t *block);
 void deallocate(memory_block_t *block);
 size_t get_size(memory_block_t *block);
-memory_block_t *get_next(memory_block_t *block);
 void put_block(memory_block_t *block, size_t size, bool alloc);
 void *get_payload(memory_block_t *block);
 memory_block_t *get_block(void *payload);
