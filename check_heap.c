@@ -58,7 +58,6 @@ int check_ascending(){
 
                 //if a block is not in the right order, return -1
                 printf("not all blocks are in ascending order\n");
-                printMemory();
                 return -1;
             }
         }
