@@ -100,7 +100,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* O(n)
+/* O(n) takes a long time
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -150,25 +150,51 @@ void insert(memory_block_t* curBlock){
         return;
     }
 
-    //general case: inserts in middle of the list, meaning both prev and next must point to existing blocks
-    memory_block_t* curMemory = free_head;
-    while(curMemory && curMemory->next != NULL){
+    //general case: inserts in middle of list, prev and next are non-NULL blocks
+    //arithmetic determines which end of list to start in
+    //if curBlock is closer to free_head (aka curBlock - free_head) < (last_free - curBlock) then start looking at free_head
+    //if curBlock is closer to last_free (aka curBlock - free_head) > (last_free - curBlock) then start looking at last_free
+    memory_block_t* curMemory = (curBlock - free_head) < (last_free - curBlock) ? free_head : last_free;
 
-        //checking for addresses to be inserted between
-        if(curBlock > curMemory && curBlock < curMemory->next){
+    //traverses blocks from the beginning of free list
+    if(curMemory == free_head){
+        while(curMemory && curMemory->next != NULL){
 
-            //insert in between the two blocks, changes curMemory's next prev and curBlock's next
-            curMemory->next->prev = curBlock;
-            curBlock->next = curMemory->next;
+            //checking for addresses to be inserted between
+            if(curMemory < curBlock && curBlock < curMemory->next){
 
-            //changes curMemory's next and curBlock's prev
-            curMemory->next = curBlock;
-            curBlock->prev = curMemory;
-            return;
+                //insert in between the two blocks, changes curMemory's next prev 
+                //and curBlock's next to each other
+                curMemory->next->prev = curBlock;
+                curBlock->next = curMemory->next;
+
+                //changes curMemory's next and curBlock's prev to each other
+                curMemory->next = curBlock;
+                curBlock->prev = curMemory;
+                return;
+            }
+            curMemory = curMemory->next;
         }
-        curMemory = curMemory->next;
-    }
-    return;
+    } 
+
+    //else traverses blocks from the end of free list
+    while(curMemory && curMemory->prev != NULL){
+
+            //checking for addresses to be inserted between
+            if(curMemory->prev < curBlock && curBlock < curMemory){
+
+                //insert in between the two blocks, changes curMemory's prev next 
+                //and curBlock's prev to each other
+                curMemory->prev->next = curBlock;
+                curBlock->prev = curMemory->prev;
+
+                //changes curMemory's prev and curBlock's next to each other
+                curMemory->prev = curBlock;
+                curBlock->next = curMemory;
+                return;
+            }
+            curMemory = curMemory->prev;
+        }
 }
 
 /* 
