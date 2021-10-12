@@ -220,13 +220,14 @@ memory_block_t *find(size_t size) {
 
     //runs loop while curMemory is not null
     while(curMemory){
-        if(get_size(curMemory) == size){
+
+        //find block that fits size perfectly
+        if(curMemory->block_size_alloc == size){
             return curMemory;
         }
-
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        if(get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
+        if(curMemory->block_size_alloc > size && (curMemory->block_size_alloc - size) > sizeof(memory_block_t)){
             return curMemory;
         }
         curMemory = curMemory->next;
@@ -236,7 +237,7 @@ memory_block_t *find(size_t size) {
     return extend(size); 
 }
 
-/* O(1) 
+/*  
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
