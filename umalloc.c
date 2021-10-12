@@ -149,7 +149,7 @@ void insert(memory_block_t* curBlock){
         return;
     }
 
-    //general case: inserts in middle of list, prev and next are non-NULL blocks
+    //general case: inserts in middle of list, means prev and next are non-NULL blocks
     //arithmetic determines which end of list to start in
     //if curBlock is closer to free_head (aka curBlock - free_head) < (last_free - curBlock) then start looking at free_head
     //if curBlock is closer to last_free (aka curBlock - free_head) > (last_free - curBlock) then start looking at last_free
@@ -208,10 +208,10 @@ memory_block_t *extend(size_t size) {
 
     //we know its greater than usual so always add it to the end
     //insert memory address in free list
-    //insert(temp);
-    last_free->next = temp;
-    temp->prev = last_free;
-    last_free = temp;
+    insert(temp);
+    //last_free->next = temp;
+    //temp->prev = last_free;
+    //last_free = temp;
 
     return temp;
 }
@@ -228,6 +228,7 @@ memory_block_t *find(size_t size) {
 
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
+        //or if block fits the size requirement perfectly
         if((get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)) || 
             get_size(curMemory) == size){
             return curMemory;
@@ -239,7 +240,7 @@ memory_block_t *find(size_t size) {
     return extend(size); 
 }
 
-/*  Try changing split
+/*  
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
