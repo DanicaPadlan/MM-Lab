@@ -206,8 +206,13 @@ memory_block_t *extend(size_t size) {
     //initializing header for new heap pool
     put_block(temp, size + (PAGESIZE/2), false);
 
+    //we know its greater than usual so just add it to the end
     //insert memory address in free list
-    insert(temp);
+    //insert(temp);
+    last_free->next = temp;
+    temp->prev = last_free;
+    last_free = temp;
+
     return temp;
 }
 
