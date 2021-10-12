@@ -223,7 +223,9 @@ memory_block_t *find(size_t size) {
 
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        if((get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)) || get_size(curMemory) == size){
+        //OR the block fits the requested size permanently 
+        if((get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)) 
+        || get_size(curMemory) == size){
             return curMemory;
         }
         curMemory = curMemory->next;
