@@ -187,46 +187,27 @@ memory_block_t *extend(size_t size) {
     return temp;
 }
 
+//try first fit?
 /* O(n)
  * find - finds a free block that can satisfy the umalloc request by using the best fit algorithm
  */
 memory_block_t *find(size_t size) { 
     //starts searching in beginning of memory header list
     memory_block_t* curMemory = free_head;
-    memory_block_t* bestBlock = NULL;
 
     //runs loop while curMemory is not null
     while(curMemory){
 
-        //checks if block is greater or equal to size 
-        if(get_size(curMemory) >= size){
-
-            //special case: block fits requirements perfectly
-            if(get_size(curMemory) == size){
-                bestBlock = curMemory;
-
-            //general case: checking potential leftover block is big enough to store another header and payload addresses
-            //otherwise it would cause out-of-bounds SEGFAULT errors 
-            } else if((get_size(curMemory) - size) > sizeof(memory_block_t)){
-
-                //special case: bestBlock is empty OR 
-                //general case: curMemory's size is less than bestBlock's size
-                if(bestBlock == NULL || get_size(curMemory) < get_size(bestBlock)){
-                    bestBlock = curMemory;
-                }
-
-            }
+        //checks if block is greater or equal to size AND potential leftover block 
+        //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
+        if(get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
+            return curMemory;
         }
         curMemory = curMemory->next;
     }
 
-    //special case: no block can hold requested size
-    if(bestBlock == NULL){
-
-        //must call extend to get new block
-        bestBlock = extend(size);
-    }
-    return bestBlock; 
+    //special case: no block can hold requested size, must call extend for new block
+    return extend(size); 
 }
 
 //switching between algorithms
@@ -234,30 +215,27 @@ memory_block_t *find(size_t size) {
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
-    //gets new size for new split block, will be used to fill information in the new splitted header
-    size_t newSize = get_size(block) - size;
-
-    //gets header of the block
-    char* p = (char*) block;
-
-    //header address + size needed for allocating block (already includes header val)
-    p = p + size;
-
-    //error happens before here
-    //gives in header address and new size to intialize new block 
-    put_block((memory_block_t*) p, newSize, false); 
-
-    //update cur block's size
+    //calculate new size for new split block
+    size_t splitSize = get_size(block) - size;
+ 
+    //calculate new split block
+     memory_block_t* splitBlock = (memory_block_t*)((char*) block + size);
+ 
+    //sets split block's header
+     put_block(splitBlock, splitSize, false);
+ 
+    //set allocating block's size
     block->block_size_alloc = size;
-
-    //sets up block as allocated in its space address memory
+ 
+    //allocating block
     allocate(block);
 
+    //recomment!!!
     //special case: allocated block is free_head 
     if(free_head == block){
 
         //updates free_head to newly split block
-        free_head = (void*) p;
+        free_head = splitBlock;
         free_head->next = block->next;
         free_head->prev = NULL;
 
@@ -266,8 +244,10 @@ memory_block_t *split(memory_block_t *block, size_t size) {
             block->next->prev = free_head;
         }
         
-        //special check case: if free_head is also the last_free where prev is null then,,
+        //special case: free_head is also last_free 
         if(last_free == block){
+
+            //sets to updated free_head
             last_free = free_head;
         }
 
@@ -275,7 +255,7 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     } else if(last_free == block){
 
         //updates last_free to newly split block
-        last_free = (void*) p;
+        last_free = splitBlock;
         last_free->prev = block->prev;
         last_free->next = NULL;
 
@@ -286,15 +266,11 @@ memory_block_t *split(memory_block_t *block, size_t size) {
 
     //general case: middle list cases update next and prev blocks
     } else{
-        ((memory_block_t*) p)->prev = block->prev;
-        block->prev->next = (void*) p;
-        ((memory_block_t*) p)->next = block->next;
-        block->next->prev = (void*) p; 
+        splitBlock->prev = block->prev;
+        block->prev->next = splitBlock;
+        splitBlock->next = block->next;
+        block->next->prev = splitBlock; 
     }
-
-    //nulls prev and next for allocated block
-    block->next = NULL;
-    block->prev = NULL;
 
     //returns allocated block
     return block;
