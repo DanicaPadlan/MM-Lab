@@ -201,10 +201,10 @@ void insert(memory_block_t* curBlock){
  */
 memory_block_t *extend(size_t size) {
     //get new heap pool for more memory storage
-    memory_block_t* temp = csbrk(size + PAGESIZE);
+    memory_block_t* temp = csbrk(size + (PAGESIZE/2));
 
     //initializing header for new heap pool
-    put_block(temp, size + PAGESIZE, false);
+    put_block(temp, size + (PAGESIZE/2), false);
 
     //insert memory address in free list
     insert(temp);
@@ -220,10 +220,13 @@ memory_block_t *find(size_t size) {
 
     //runs loop while curMemory is not null
     while(curMemory){
+        if(get_size(curMemory) == size){
+            return curMemory;
+        }
 
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        if(get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
+        if(get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
             return curMemory;
         }
         curMemory = curMemory->next;
