@@ -201,10 +201,10 @@ void insert(memory_block_t* curBlock){
  */
 memory_block_t *extend(size_t size) {
     //get new heap pool for more memory storage
-    memory_block_t* temp = csbrk(size + (PAGESIZE/2));
+    memory_block_t* temp = csbrk(size + PAGESIZE);
 
     //initializing header for new heap pool
-    put_block(temp, size + (PAGESIZE/2), false);
+    put_block(temp, size + PAGESIZE, false);
 
     //insert memory address in free list
     insert(temp);
