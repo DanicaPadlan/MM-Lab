@@ -99,7 +99,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* 
+/* O(n) takes a long time
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -211,24 +211,19 @@ memory_block_t *extend(size_t size) {
     return temp;
 }
 
-/* 
+/* O(n)
  * find - finds a free block that can satisfy the umalloc request by using the first fit algorithm
  */
 memory_block_t *find(size_t size) { 
-
     //starts searching in beginning of memory header list
     memory_block_t* curMemory = free_head;
 
     //runs loop while curMemory is not null
     while(curMemory){
 
-        //special case: if the curMemory fits the size perfectly
-        if(get_size(curMemory) == size){
-            return curMemory;
-
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        } else if(get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
+        if(get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
             return curMemory;
         }
         curMemory = curMemory->next;
@@ -238,7 +233,7 @@ memory_block_t *find(size_t size) {
     return extend(size); 
 }
 
-/* 
+/* O(1) 
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
@@ -446,11 +441,11 @@ void *umalloc(size_t size) {
         if(availBlock->next != NULL){
             availBlock->next->prev = availBlock->prev;
         }
-
-        //dereferences availBlock's next and prev
-        availBlock->next = NULL;
-        availBlock->prev = NULL;
     }
+
+    //dereferences availBlock's next and prev
+    availBlock->next = NULL;
+    availBlock->prev = NULL;
 
     //returns payload address to user
     return get_payload(availBlock);  
