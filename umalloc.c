@@ -29,9 +29,6 @@ memory_block_t *free_head;
 //Keeps track of last free block
 memory_block_t* last_free;
 
-//constant alignment
-int ALIGNMENT_PADDING = sizeof(memory_block_t);
-
 /*
  * is_allocated - returns true if a block is marked as allocated.
  */
@@ -103,7 +100,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/*
+/* O(1)
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -174,7 +171,7 @@ void insert(memory_block_t* curBlock){
     return;
 }
 
-/*
+/* At least O(n)
  * extend - extends the heap if more memory is required.
  */
 memory_block_t *extend(size_t size) {
@@ -189,7 +186,7 @@ memory_block_t *extend(size_t size) {
     return temp;
 }
 
-/*  
+/* O(n)
  * find - finds a free block that can satisfy the umalloc request by using the best fit algorithm
  */
 memory_block_t *find(size_t size) { 
@@ -209,7 +206,7 @@ memory_block_t *find(size_t size) {
 
             //general case: checking potential leftover block is big enough to store another header and payload addresses
             //otherwise it would cause out-of-bounds SEGFAULT errors 
-            } else if((get_size(curMemory) - size) > ALIGNMENT_PADDING){
+            } else if((get_size(curMemory) - size) > sizeof(memory_block_t)){
 
                 //special case: bestBlock is empty OR 
                 //general case: curMemory's size is less than bestBlock's size
@@ -231,7 +228,7 @@ memory_block_t *find(size_t size) {
     return bestBlock; 
 }
 
-/*
+/* O(1)
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
@@ -374,13 +371,13 @@ void coalesce(memory_block_t *block) {
 int uinit() {
     //call csbrk to initialize heap 
     //sets memory address to free_head
-    free_head = csbrk(ALIGNMENT * PAGESIZE);
+    free_head = csbrk( (ALIGNMENT/2) * PAGESIZE);
 
     //updates last_free to memory in free_head since lone heap
     last_free = free_head;
 
     //initializing header
-    put_block(free_head, ALIGNMENT * PAGESIZE, false);
+    put_block(free_head, (ALIGNMENT/2) * PAGESIZE, false);
 
     return 0;
 }
@@ -392,8 +389,8 @@ void *umalloc(size_t size) {
     //pre-condition where size must be greater than 0
     assert(size > 0);
 
-    //request for desired size + header size (32 or ALIGNMENT PAD)
-    int appSize = ALIGN(size + ALIGNMENT_PADDING);
+    //request for desired size + header size (32 or size of memory_block_t)
+    int appSize = ALIGN(size + sizeof(memory_block_t));
 
     //find returns the address with headers 
     memory_block_t* availBlock = find(appSize); 
