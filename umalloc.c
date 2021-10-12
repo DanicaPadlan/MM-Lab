@@ -17,7 +17,6 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "Danica Padlan - dmp3357" ANSI_RE
  *  checks for neighboring blocks to coalesce with
  */
 
-
 /*
  * The following helpers can be used to interact with the memory_block_t
  * struct, they can be adjusted as necessary.
@@ -100,7 +99,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* O(n) takes a long time
+/* 
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -381,13 +380,13 @@ void coalesce(memory_block_t *block) {
 int uinit() {
     //call csbrk to initialize heap 
     //sets memory address to free_head
-    free_head = csbrk(PAGESIZE);
+    free_head = csbrk(16 * PAGESIZE);
 
     //updates last_free to memory in free_head since lone heap
     last_free = free_head;
 
     //initializing header
-    put_block(free_head,PAGESIZE, false);
+    put_block(free_head,16 * PAGESIZE, false);
 
     return 0;
 }
