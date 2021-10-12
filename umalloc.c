@@ -11,7 +11,7 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "Danica Padlan - dmp3357" ANSI_RE
  *  The free list is sorted in ascending memory address order.
  *
  *  When allocating, delinks the allocated block and adjusts its prev and next block to point to each other
- *  Allocater finds and returns best fitting block for requested size.
+ *  Allocater finds and returns first fitting block for requested size.
  *
  *  When freeing block, inserts block in free list in accordance to memory address and
  *  checks for neighboring blocks to coalesce with
@@ -29,7 +29,7 @@ memory_block_t *free_head;
 //Keeps track of last free block
 memory_block_t* last_free;
 
-/*
+/* O(1)
  * is_allocated - returns true if a block is marked as allocated.
  */
 bool is_allocated(memory_block_t *block) {
@@ -37,7 +37,7 @@ bool is_allocated(memory_block_t *block) {
     return block->block_size_alloc & 0x1;
 }
 
-/*
+/* O(1)
  * allocate - marks a block as allocated.
  */
 void allocate(memory_block_t *block) {
@@ -45,7 +45,7 @@ void allocate(memory_block_t *block) {
     block->block_size_alloc |= 0x1;
 }
 
-/*
+/* O(1)
  * deallocate - marks a block as unallocated.
  */
 void deallocate(memory_block_t *block) {
@@ -53,7 +53,7 @@ void deallocate(memory_block_t *block) {
     block->block_size_alloc &= ~0x1;
 }
 
-/*
+/* O(1)
  * get_size - gets the size of the block.
  */
 size_t get_size(memory_block_t *block) {
@@ -61,7 +61,7 @@ size_t get_size(memory_block_t *block) {
     return block->block_size_alloc & ~(ALIGNMENT-1);
 }
 
-/*
+/* O(1)
  * put_block - puts a block struct into memory at the specified address.
  * Initializes the size and allocated fields, along with NUlling out the next 
  * and prev field.
@@ -75,7 +75,7 @@ void put_block(memory_block_t *block, size_t size, bool alloc) {
     block->prev = NULL;
 }
 
-/*
+/* O(1)
  * get_payload - gets the payload of the block. (Revised to support 32 byte header)
  */
 void *get_payload(memory_block_t *block) {
@@ -85,7 +85,7 @@ void *get_payload(memory_block_t *block) {
     return (void*)(block + 1);
 }
 
-/*
+/* O(1)
  * get_block - given a payload, returns the block. (Revised to support 32 byter header)
  */
 memory_block_t *get_block(void *payload) {
@@ -150,7 +150,6 @@ void insert(memory_block_t* curBlock){
         return;
     }
 
-    //O(n)
     //general case: inserts in middle of the list, meaning both prev and next must point to existing blocks
     memory_block_t* curMemory = free_head;
     while(curMemory && curMemory->next != NULL){
@@ -187,9 +186,8 @@ memory_block_t *extend(size_t size) {
     return temp;
 }
 
-//try first fit?
 /* O(n)
- * find - finds a free block that can satisfy the umalloc request by using the best fit algorithm
+ * find - finds a free block that can satisfy the umalloc request by using the first fit algorithm
  */
 memory_block_t *find(size_t size) { 
     //starts searching in beginning of memory header list
@@ -210,8 +208,7 @@ memory_block_t *find(size_t size) {
     return extend(size); 
 }
 
-//switching between algorithms
-/* O(n) because calling insert, 
+/* O(1) 
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
@@ -219,10 +216,10 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     size_t splitSize = get_size(block) - size;
  
     //calculate new split block
-     memory_block_t* splitBlock = (memory_block_t*)((char*) block + size);
+    memory_block_t* splitBlock = (memory_block_t*)((char*) block + size);
  
     //sets split block's header
-     put_block(splitBlock, splitSize, false);
+    put_block(splitBlock, splitSize, false);
  
     //set allocating block's size
     block->block_size_alloc = size;
@@ -230,7 +227,6 @@ memory_block_t *split(memory_block_t *block, size_t size) {
     //allocating block
     allocate(block);
 
-    //recomment!!!
     //special case: allocated block is free_head 
     if(free_head == block){
 
@@ -241,6 +237,8 @@ memory_block_t *split(memory_block_t *block, size_t size) {
 
         //checking for existence of next block
         if(block->next != NULL){
+
+            //sets next's prev pointer to free_head
             block->next->prev = free_head;
         }
         
@@ -357,7 +355,7 @@ void coalesce(memory_block_t *block) {
 int uinit() {
     //call csbrk to initialize heap 
     //sets memory address to free_head
-    free_head = csbrk(PAGESIZE/2);
+    free_head = csbrk(PAGESIZE);
 
     //updates last_free to memory in free_head since lone heap
     last_free = free_head;
@@ -383,6 +381,7 @@ void *umalloc(size_t size) {
 
     //check for split case
     if(get_size(availBlock) > appSize){
+
         //splits leftover block from allocating block
         split(availBlock, appSize);
 
