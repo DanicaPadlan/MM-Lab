@@ -99,7 +99,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* O(n) takes a long time
+/* 
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -206,15 +206,12 @@ memory_block_t *extend(size_t size) {
     //initializing header for new heap pool
     put_block(temp, size + (PAGESIZE/2), false);
 
-    //adds new heap to the end because we know its address gets bigger
-    last_free->next = temp;
-    temp->prev = last_free;
-    last_free = temp;
-    
+    //insert memory address in free list
+    insert(temp);
     return temp;
 }
 
-/* O(n)
+/* 
  * find - finds a free block that can satisfy the umalloc request by using the first fit algorithm
  */
 memory_block_t *find(size_t size) { 
@@ -236,7 +233,7 @@ memory_block_t *find(size_t size) {
     return extend(size); 
 }
 
-/* O(1) 
+/* 
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
