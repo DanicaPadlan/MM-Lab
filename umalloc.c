@@ -99,7 +99,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* 
+/* O(n) takes a long time
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -149,7 +149,7 @@ void insert(memory_block_t* curBlock){
         return;
     }
 
-    //general case: inserts in middle of list, means prev and next are non-NULL blocks
+    //general case: inserts in middle of list, prev and next are non-NULL blocks
     //arithmetic determines which end of list to start in
     //if curBlock is closer to free_head (aka curBlock - free_head) < (last_free - curBlock) then start looking at free_head
     //if curBlock is closer to last_free (aka curBlock - free_head) > (last_free - curBlock) then start looking at last_free
@@ -206,15 +206,15 @@ memory_block_t *extend(size_t size) {
     //initializing header for new heap pool
     put_block(temp, size + (PAGESIZE/2), false);
 
-    //we know its greater than usual so always add it to the end of the list
+    //adds new heap to the end because we know its address gets bigger
     last_free->next = temp;
     temp->prev = last_free;
     last_free = temp;
-
+    
     return temp;
 }
 
-/* 
+/* O(n)
  * find - finds a free block that can satisfy the umalloc request by using the first fit algorithm
  */
 memory_block_t *find(size_t size) { 
@@ -226,9 +226,7 @@ memory_block_t *find(size_t size) {
 
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        //or if block fits the size requirement perfectly
-        if((get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)) || 
-            get_size(curMemory) == size){
+        if(get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
             return curMemory;
         }
         curMemory = curMemory->next;
@@ -238,23 +236,70 @@ memory_block_t *find(size_t size) {
     return extend(size); 
 }
 
-/*  
+/* O(1) 
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
-    //find size of leftover block after allocating part of the block
-    size_t leftoverSize = get_size(block) - size;
+    //calculate new size for new split block
+    size_t splitSize = get_size(block) - size;
+ 
+    //calculate new split block
+    memory_block_t* splitBlock = (memory_block_t*)((char*) block + size);
+ 
+    //sets split block's header
+    put_block(splitBlock, splitSize, false);
+ 
+    //set allocating block's size
+    block->block_size_alloc = size;
+ 
+    //allocating block
+    allocate(block);
 
-    //allocating last splitted portion of the block, keeping first half in free list
-    //calculates allocating block address
-    memory_block_t* allocatedBlock = (memory_block_t*) ((char*) block + leftoverSize);
-    
-    //sets leftover block to new size
-    block->block_size_alloc = leftoverSize;
+    //special case: allocated block is free_head 
+    if(free_head == block){
 
-    //sets allocated blocks size and allocated boolean
-    put_block(allocatedBlock, size, true);
-    return allocatedBlock;
+        //updates free_head to newly split block
+        free_head = splitBlock;
+        free_head->next = block->next;
+        free_head->prev = NULL;
+
+        //checking for existence of next block
+        if(block->next != NULL){
+
+            //sets next's prev pointer to free_head
+            block->next->prev = free_head;
+        }
+        
+        //special case: free_head is also last_free 
+        if(last_free == block){
+
+            //sets to updated free_head
+            last_free = free_head;
+        }
+
+    //special case: last_free is the splitted block
+    } else if(last_free == block){
+
+        //updates last_free to newly split block
+        last_free = splitBlock;
+        last_free->prev = block->prev;
+        last_free->next = NULL;
+
+        //checks for existence of prev block
+        if(block->prev != NULL){
+            block->prev->next = last_free;
+        }
+
+    //general case: middle list cases update next and prev blocks
+    } else{
+        splitBlock->prev = block->prev;
+        block->prev->next = splitBlock;
+        splitBlock->next = block->next;
+        block->next->prev = splitBlock; 
+    }
+
+    //returns allocated block
+    return block;
 }
 
 /*
@@ -366,38 +411,39 @@ void *umalloc(size_t size) {
     if(get_size(availBlock) > appSize){
 
         //splits leftover block from allocating block
-        return get_payload(split(availBlock, appSize));
+        split(availBlock, appSize);
 
     //if it is not split case   
-    } 
+    } else{
 
-    //sets up block as allocated
-    allocate(availBlock);
+        //sets up block as allocated
+        allocate(availBlock);
 
-    //special case if allocating free_head
-    if(free_head == availBlock){
+        //special case if allocating free_head
+        if(free_head == availBlock){
 
-        //updates free_head to next block to delink availBlock
-        free_head = free_head->next;
-        free_head->prev = NULL;
-    } 
+            //updates free_head to next block to delink availBlock
+            free_head = free_head->next;
+            free_head->prev = NULL;
+        } 
 
-    //special case if allocating last_free
-    if(last_free == availBlock){
+        //special case if allocating last_free
+        if(last_free == availBlock){
 
-        //updates last_free to prev block to delink availBlock
-        last_free = availBlock->prev;
-        last_free->next = NULL;
-        availBlock->prev = last_free;
-    }
+            //updates last_free to prev block to delink availBlock
+            last_free = availBlock->prev;
+            last_free->next = NULL;
+            availBlock->prev = last_free;
+        }
 
-    //sets block's prev and next to point to each other if not NULL
-    //to delink availBlock from free list
-    if(availBlock->prev != NULL){
-        availBlock->prev->next = availBlock->next;
-    }
-    if(availBlock->next != NULL){
-        availBlock->next->prev = availBlock->prev;
+        //sets block's prev and next to point to each other if not NULL
+        //to delink availBlock from free list
+        if(availBlock->prev != NULL){
+            availBlock->prev->next = availBlock->next;
+        }
+        if(availBlock->next != NULL){
+            availBlock->next->prev = availBlock->prev;
+        }
     }
 
     //dereferences availBlock's next and prev
