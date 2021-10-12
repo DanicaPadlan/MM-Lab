@@ -99,7 +99,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* O(n) takes a long time
+/* 
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -211,7 +211,7 @@ memory_block_t *extend(size_t size) {
     return temp;
 }
 
-/* O(n)
+/* 
  * find - finds a free block that can satisfy the umalloc request by using the first fit algorithm
  */
 memory_block_t *find(size_t size) { 
@@ -221,13 +221,10 @@ memory_block_t *find(size_t size) {
     //runs loop while curMemory is not null
     while(curMemory){
 
-        //find block that fits size perfectly
-        if(curMemory->block_size_alloc == size){
-            return curMemory;
-        }
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        if(curMemory->block_size_alloc > size && (curMemory->block_size_alloc - size) > sizeof(memory_block_t)){
+        if((get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)) || 
+            get_size(curMemory) == size){
             return curMemory;
         }
         curMemory = curMemory->next;
