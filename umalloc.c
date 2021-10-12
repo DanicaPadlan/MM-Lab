@@ -361,7 +361,7 @@ int uinit() {
     last_free = free_head;
 
     //initializing header
-    put_block(free_head,PAGESIZE/2, false);
+    put_block(free_head,PAGESIZE, false);
 
     return 0;
 }
