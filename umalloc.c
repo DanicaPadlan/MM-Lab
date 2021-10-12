@@ -100,7 +100,7 @@ memory_block_t *get_block(void *payload) {
  * design, but they are not required. 
  */
 
-/* O(1)
+/* O(n)
  * insert - finds spot to insert block in ascending order in accordance to memory address
  */
 void insert(memory_block_t* curBlock){
@@ -150,6 +150,7 @@ void insert(memory_block_t* curBlock){
         return;
     }
 
+    //O(n)
     //general case: inserts in middle of the list, meaning both prev and next must point to existing blocks
     memory_block_t* curMemory = free_head;
     while(curMemory && curMemory->next != NULL){
@@ -171,7 +172,7 @@ void insert(memory_block_t* curBlock){
     return;
 }
 
-/* At least O(n)
+/* 
  * extend - extends the heap if more memory is required.
  */
 memory_block_t *extend(size_t size) {
@@ -228,65 +229,74 @@ memory_block_t *find(size_t size) {
     return bestBlock; 
 }
 
-/* O(1)
+//switching between algorithms
+/* O(n) because calling insert, 
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
-    //calculate new size for new split block
-    size_t splitSize = get_size(block) - size;
+    //gets new size for new split block, will be used to fill information in the new splitted header
+    size_t newSize = get_size(block) - size;
 
-    //calculate new split block
-    memory_block_t* splitBlock = (memory_block_t*)((char*) block + size);
+    //gets header of the block
+    char* p = (char*) block;
 
-    //sets split block's header
-    put_block(splitBlock, splitSize, false);
+    //header address + size needed for allocating block (already includes header val)
+    p = p + size;
 
-    //set allocating block's size
+    //error happens before here
+    //gives in header address and new size to intialize new block 
+    put_block((memory_block_t*) p, newSize, false); 
+
+    //update cur block's size
     block->block_size_alloc = size;
 
-    //allocating block
+    //sets up block as allocated in its space address memory
     allocate(block);
 
-    //delinks allocated block from free list
-    //special case: allocated block is free_head
+    //special case: allocated block is free_head 
     if(free_head == block){
 
-        //chance of it being a NULL or an existing block
-        free_head = block->next;
+        //updates free_head to newly split block
+        free_head = (void*) p;
+        free_head->next = block->next;
+        free_head->prev = NULL;
 
-        //checking if free_head exists, to update its prev pointer
-        if(free_head != NULL){
-            free_head->prev = NULL;
+        //checking for existence of next block
+        if(block->next != NULL){
+            block->next->prev = free_head;
         }
-
-        //checking if free_head is also last_free, to update last free
+        
+        //special check case: if free_head is also the last_free where prev is null then,,
         if(last_free == block){
-            //sets to update free_head
             last_free = free_head;
         }
 
-    //special case: allocated block is free_head
+    //special case: last_free is the splitted block
     } else if(last_free == block){
 
-        //sets last_free to block's previous block
-        last_free = block->prev;
+        //updates last_free to newly split block
+        last_free = (void*) p;
+        last_free->prev = block->prev;
+        last_free->next = NULL;
 
-        //checking if prev block extists, to update its next pointer
-        if(last_free != NULL){
-            last_free->next = NULL;
+        //checks for existence of prev block
+        if(block->prev != NULL){
+            block->prev->next = last_free;
         }
 
-    //general case: middle of list alteration, should have existing prev and next block 
+    //general case: middle list cases update next and prev blocks
     } else{
-
-        //setting block's prev and next to point to each other
-        block->prev->next = block->next;
-        block->next->prev = block->prev;
-
+        ((memory_block_t*) p)->prev = block->prev;
+        block->prev->next = (void*) p;
+        ((memory_block_t*) p)->next = block->next;
+        block->next->prev = (void*) p; 
     }
 
-    //inserts newly splitBlock into free list to put leftover blocks back in free list
-    insert(splitBlock);
+    //nulls prev and next for allocated block
+    block->next = NULL;
+    block->prev = NULL;
+
+    //returns allocated block
     return block;
 }
 
