@@ -224,7 +224,7 @@ memory_block_t *find(size_t size) {
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
         //OR the block fits the requested size permanently 
-        if((get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)) 
+        if((get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)) 
         || get_size(curMemory) == size){
             return curMemory;
         }
@@ -239,66 +239,19 @@ memory_block_t *find(size_t size) {
  * split - splits a given block in parts, one allocated, one free.
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
-    //calculate new size for new split block
-    size_t splitSize = get_size(block) - size;
- 
-    //calculate new split block
-    memory_block_t* splitBlock = (memory_block_t*)((char*) block + size);
- 
-    //sets split block's header
-    put_block(splitBlock, splitSize, false);
- 
-    //set allocating block's size
-    block->block_size_alloc = size;
- 
-    //allocating block
-    allocate(block);
+    //find size of leftover block after allocating part of the block
+    size_t leftoverSize = get_size(block) - size;
 
-    //special case: allocated block is free_head 
-    if(free_head == block){
+    //allocating last splitted portion of the block, keeping first half in free list
+    //calculates allocating block address
+    memory_block_t* allocatedBlock = (memory_block_t*) ((char*) block + leftoverSize);
+    
+    //sets leftover block to new size
+    block->block_size_alloc = leftoverSize;
 
-        //updates free_head to newly split block
-        free_head = splitBlock;
-        free_head->next = block->next;
-        free_head->prev = NULL;
-
-        //checking for existence of next block
-        if(block->next != NULL){
-
-            //sets next's prev pointer to free_head
-            block->next->prev = free_head;
-        }
-        
-        //special case: free_head is also last_free 
-        if(last_free == block){
-
-            //sets to updated free_head
-            last_free = free_head;
-        }
-
-    //special case: last_free is the splitted block
-    } else if(last_free == block){
-
-        //updates last_free to newly split block
-        last_free = splitBlock;
-        last_free->prev = block->prev;
-        last_free->next = NULL;
-
-        //checks for existence of prev block
-        if(block->prev != NULL){
-            block->prev->next = last_free;
-        }
-
-    //general case: middle list cases update next and prev blocks
-    } else{
-        splitBlock->prev = block->prev;
-        block->prev->next = splitBlock;
-        splitBlock->next = block->next;
-        block->next->prev = splitBlock; 
-    }
-
-    //returns allocated block
-    return block;
+    //sets allocated blocks size and allocated boolean
+    put_block(allocatedBlock, size, true);
+    return allocatedBlock;
 }
 
 /*
@@ -382,7 +335,7 @@ void coalesce(memory_block_t *block) {
 int uinit() {
     //call csbrk to initialize heap 
     //sets memory address to free_head
-    free_head = csbrk(PAGESIZE);
+    free_head = csbrk(8 * PAGESIZE);
 
     //updates last_free to memory in free_head since lone heap
     last_free = free_head;
@@ -410,7 +363,7 @@ void *umalloc(size_t size) {
     if(get_size(availBlock) > appSize){
 
         //splits leftover block from allocating block
-        split(availBlock, appSize);
+        availBlock = split(availBlock, appSize);
 
     //if it is not split case   
     } else{
@@ -443,11 +396,11 @@ void *umalloc(size_t size) {
         if(availBlock->next != NULL){
             availBlock->next->prev = availBlock->prev;
         }
-    }
 
-    //dereferences availBlock's next and prev
-    availBlock->next = NULL;
-    availBlock->prev = NULL;
+        //dereferences availBlock's next and prev
+        availBlock->next = NULL;
+        availBlock->prev = NULL;
+    }
 
     //returns payload address to user
     return get_payload(availBlock);  
