@@ -28,7 +28,7 @@ memory_block_t *free_head;
 //Keeps track of last free block
 memory_block_t* last_free;
 
-/* O(1)
+/* 
  * is_allocated - returns true if a block is marked as allocated.
  */
 bool is_allocated(memory_block_t *block) {
@@ -36,7 +36,7 @@ bool is_allocated(memory_block_t *block) {
     return block->block_size_alloc & 0x1;
 }
 
-/* O(1)
+/* 
  * allocate - marks a block as allocated.
  */
 void allocate(memory_block_t *block) {
@@ -44,7 +44,7 @@ void allocate(memory_block_t *block) {
     block->block_size_alloc |= 0x1;
 }
 
-/* O(1)
+/* 
  * deallocate - marks a block as unallocated.
  */
 void deallocate(memory_block_t *block) {
@@ -52,7 +52,7 @@ void deallocate(memory_block_t *block) {
     block->block_size_alloc &= ~0x1;
 }
 
-/* O(1)
+/* 
  * get_size - gets the size of the block.
  */
 size_t get_size(memory_block_t *block) {
@@ -60,7 +60,7 @@ size_t get_size(memory_block_t *block) {
     return block->block_size_alloc & ~(ALIGNMENT-1);
 }
 
-/* O(1)
+/* 
  * put_block - puts a block struct into memory at the specified address.
  * Initializes the size and allocated fields, along with NUlling out the next 
  * and prev field.
@@ -74,7 +74,7 @@ void put_block(memory_block_t *block, size_t size, bool alloc) {
     block->prev = NULL;
 }
 
-/* O(1)
+/* 
  * get_payload - gets the payload of the block. (Revised to support 32 byte header)
  */
 void *get_payload(memory_block_t *block) {
@@ -84,7 +84,7 @@ void *get_payload(memory_block_t *block) {
     return (void*)(block + 1);
 }
 
-/* O(1)
+/* 
  * get_block - given a payload, returns the block. (Revised to support 32 byter header)
  */
 memory_block_t *get_block(void *payload) {
@@ -211,18 +211,7 @@ memory_block_t *extend(size_t size) {
     return temp;
 }
 
-//debugging print
-void print_free(){
-    memory_block_t* cur = free_head;
-    printf("Printing free list\n");
-    while(cur){
-        printf("Starting Memory Address: %p, Ending Memory Address is: %p ~ Prev: %p ~ Next: %p   \n", cur, (void*) ((char*)cur + get_size(cur)), cur->prev, cur->next );
-        cur = cur->next;
-    }
-    return;
-}
-
-/* O(n)
+/* 
  * find - finds a free block that can satisfy the umalloc request by using the first fit algorithm
  */
 memory_block_t *find(size_t size) { 
@@ -233,9 +222,13 @@ memory_block_t *find(size_t size) {
     //runs loop while curMemory is not null
     while(curMemory){
 
+        //special case: if the curMemory fits the size perfectly
+        if(get_size(curMemory) == size){
+            return curMemory;
+
         //checks if block is greater or equal to size AND potential leftover block 
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
-        if(get_size(curMemory) >= size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
+        } else if(get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)){
             return curMemory;
         }
         curMemory = curMemory->next;
