@@ -206,12 +206,10 @@ memory_block_t *extend(size_t size) {
     //initializing header for new heap pool
     put_block(temp, size + (PAGESIZE/2), false);
 
-    //we know its greater than usual so always add it to the end
-    //insert memory address in free list
-    insert(temp);
-    //last_free->next = temp;
-    //temp->prev = last_free;
-    //last_free = temp;
+    //we know its greater than usual so always add it to the end of the list
+    last_free->next = temp;
+    temp->prev = last_free;
+    last_free = temp;
 
     return temp;
 }
@@ -368,39 +366,38 @@ void *umalloc(size_t size) {
     if(get_size(availBlock) > appSize){
 
         //splits leftover block from allocating block
-        availBlock = split(availBlock, appSize);
+        return get_payload(split(availBlock, appSize));
 
     //if it is not split case   
-    } else{
+    } 
 
-        //sets up block as allocated
-        allocate(availBlock);
+    //sets up block as allocated
+    allocate(availBlock);
 
-        //special case if allocating free_head
-        if(free_head == availBlock){
+    //special case if allocating free_head
+    if(free_head == availBlock){
 
-            //updates free_head to next block to delink availBlock
-            free_head = free_head->next;
-            free_head->prev = NULL;
-        } 
+        //updates free_head to next block to delink availBlock
+        free_head = free_head->next;
+        free_head->prev = NULL;
+    } 
 
-        //special case if allocating last_free
-        if(last_free == availBlock){
+    //special case if allocating last_free
+    if(last_free == availBlock){
 
-            //updates last_free to prev block to delink availBlock
-            last_free = availBlock->prev;
-            last_free->next = NULL;
-            availBlock->prev = last_free;
-        }
+        //updates last_free to prev block to delink availBlock
+        last_free = availBlock->prev;
+        last_free->next = NULL;
+        availBlock->prev = last_free;
+    }
 
-        //sets block's prev and next to point to each other if not NULL
-        //to delink availBlock from free list
-        if(availBlock->prev != NULL){
-            availBlock->prev->next = availBlock->next;
-        }
-        if(availBlock->next != NULL){
-            availBlock->next->prev = availBlock->prev;
-        }
+    //sets block's prev and next to point to each other if not NULL
+    //to delink availBlock from free list
+    if(availBlock->prev != NULL){
+        availBlock->prev->next = availBlock->next;
+    }
+    if(availBlock->next != NULL){
+        availBlock->next->prev = availBlock->prev;
     }
 
     //dereferences availBlock's next and prev
