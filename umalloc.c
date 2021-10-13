@@ -207,10 +207,7 @@ memory_block_t *extend(size_t size) {
     put_block(temp, size + (PAGESIZE/2), false);
 
     //insert memory address in free list
-    //insert(temp);
-    last_free->next = temp;
-    temp->prev = last_free;
-    last_free = temp;
+    insert(temp);
     return temp;
 }
 
