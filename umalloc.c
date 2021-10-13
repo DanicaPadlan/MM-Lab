@@ -335,7 +335,7 @@ void coalesce(memory_block_t *block) {
 int uinit() {
     //call csbrk to initialize heap 
     //sets memory address to free_head
-    free_head = csbrk(12 * PAGESIZE);
+    free_head = csbrk(4 * PAGESIZE);
 
     //updates last_free to memory in free_head since lone heap
     last_free = free_head;
