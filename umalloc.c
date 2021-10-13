@@ -26,7 +26,7 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "Danica Padlan - dmp3357" ANSI_RE
 memory_block_t *free_head; 
 
 //Keeps track of last free block
-memory_block_t* last_free;
+memory_block_t *last_free;
 
 /* 
  * is_allocated - returns true if a block is marked as allocated.
@@ -179,21 +179,21 @@ void insert(memory_block_t* curBlock){
     //else traverses blocks from the end of free list
     while(curMemory && curMemory->prev != NULL){
 
-            //checking for addresses to be inserted between
-            if(curMemory->prev < curBlock && curBlock < curMemory){
+        //checking for addresses to be inserted between
+        if(curMemory->prev < curBlock && curBlock < curMemory){
 
-                //insert in between the two blocks, changes curMemory's prev next 
-                //and curBlock's prev to each other
-                curMemory->prev->next = curBlock;
-                curBlock->prev = curMemory->prev;
+            //insert in between the two blocks, changes curMemory's prev next 
+            //and curBlock's prev to each other
+            curMemory->prev->next = curBlock;
+            curBlock->prev = curMemory->prev;
 
-                //changes curMemory's prev and curBlock's next to each other
-                curMemory->prev = curBlock;
-                curBlock->next = curMemory;
-                return;
-            }
-            curMemory = curMemory->prev;
+            //changes curMemory's prev and curBlock's next to each other
+            curMemory->prev = curBlock;
+            curBlock->next = curMemory;
+            return;
         }
+        curMemory = curMemory->prev;
+    }
 }
 
 /* 
@@ -225,7 +225,7 @@ memory_block_t *find(size_t size) {
         //is big enough to store another header and payload addresses to avoid out-of-bounds SEGFAULTS
         //OR the block fits the requested size permanently 
         if((get_size(curMemory) > size && (get_size(curMemory) - size) > sizeof(memory_block_t)) 
-        || get_size(curMemory) == size){
+            || get_size(curMemory) == size){
             return curMemory;
         }
         curMemory = curMemory->next;
@@ -397,9 +397,10 @@ void *umalloc(size_t size) {
             availBlock->next->prev = availBlock->prev;
         }
 
+        //does not delink bc will be reset when freed
         //dereferences availBlock's next and prev
-        availBlock->next = NULL;
-        availBlock->prev = NULL;
+        //availBlock->next = NULL;
+        //availBlock->prev = NULL;
     }
 
     //returns payload address to user
