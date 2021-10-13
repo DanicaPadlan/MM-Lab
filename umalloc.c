@@ -397,10 +397,9 @@ void *umalloc(size_t size) {
             availBlock->next->prev = availBlock->prev;
         }
 
-        //does not delink bc will be reset when freed
         //dereferences availBlock's next and prev
-        //availBlock->next = NULL;
-        //availBlock->prev = NULL;
+        availBlock->next = NULL;
+        availBlock->prev = NULL;
     }
 
     //returns payload address to user
