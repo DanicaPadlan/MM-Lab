@@ -201,10 +201,10 @@ void insert(memory_block_t* curBlock){
  */
 memory_block_t *extend(size_t size) {
     //get new heap pool for more memory storage
-    memory_block_t* temp = csbrk(size + (PAGESIZE));
+    memory_block_t* temp = csbrk(size + (PAGESIZE/2));
 
     //initializing header for new heap pool
-    put_block(temp, size + (PAGESIZE), false);
+    put_block(temp, size + (PAGESIZE/2), false);
 
     //insert memory address in free list
     insert(temp);
@@ -335,7 +335,7 @@ void coalesce(memory_block_t *block) {
 int uinit() {
     //call csbrk to initialize heap 
     //sets memory address to free_head
-    free_head = csbrk(8 * PAGESIZE);
+    free_head = csbrk(12 * PAGESIZE);
 
     //updates last_free to memory in free_head since lone heap
     last_free = free_head;
